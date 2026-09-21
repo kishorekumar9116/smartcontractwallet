@@ -13,28 +13,30 @@ type SwapState = 'form' | 'pending' | 'success';
 
 export function Swap() {
   const { chainId } = useWallet();
-  const { getOwners, getRequiredSignatures, createMultisigSwap, directSwap } = useSmartWallet();
+  const { getOwners, getRequiredSignatures, createMultisigSwap, directSwap, isFrozen } = useSmartWallet();
 
   const [mode, setMode] = useState<SwapMode>('direct');
   const [amountIn, setAmountIn] = useState('');
   const [owners, setOwners] = useState<string[]>([]);
   const [reqSignatures, setReqSignatures] = useState(0);
+  const [frozen, setFrozen] = useState(false);
 
   const [step, setStep] = useState<SwapState>('form');
   const [error, setError] = useState('');
   const [txHash, setTxHash] = useState('');
 
-  // Fetch owners and required signatures for Multisig mode
+  // Fetch owners, required signatures, and frozen state
   useEffect(() => {
     let mounted = true;
-    Promise.all([getOwners(), getRequiredSignatures()]).then(([o, r]) => {
+    Promise.all([getOwners(), getRequiredSignatures(), isFrozen()]).then(([o, r, f]) => {
       if (mounted) {
         setOwners(o);
         setReqSignatures(r);
+        setFrozen(f);
       }
     });
     return () => { mounted = false; };
-  }, [getOwners, getRequiredSignatures]);
+  }, [getOwners, getRequiredSignatures, isFrozen]);
 
   const routerAddress = chainId ? ROUTERS[chainId.toString()] : undefined;
   const isRouterConfigured = routerAddress && routerAddress !== "";
@@ -46,6 +48,11 @@ export function Swap() {
   const handleSwapAction = async () => {
     setError("");
     
+    if (frozen) {
+      setError("Wallet is frozen. Transactions are temporarily disabled.");
+      return;
+    }
+
     if (!amountIn || isNaN(Number(amountIn)) || Number(amountIn) <= 0) {
       setError("Please enter a valid amount to swap.");
       return;

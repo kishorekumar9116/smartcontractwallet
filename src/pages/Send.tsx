@@ -9,8 +9,9 @@ import { parseEther, isAddress } from 'ethers';
 type SendState = 'form' | 'confirm' | 'pending' | 'success';
 
 export function Send() {
-  const { getWalletBalance, getContractWithSigner } = useSmartWallet();
+  const { getWalletBalance, getContractWithSigner, isFrozen } = useSmartWallet();
   const [balance, setBalance] = useState("0.0000");
+  const [frozen, setFrozen] = useState(false);
   
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -21,14 +22,21 @@ export function Send() {
 
   useEffect(() => {
     let mounted = true;
-    getWalletBalance().then((bal) => {
-      if (mounted) setBalance(bal);
+    Promise.all([getWalletBalance(), isFrozen()]).then(([bal, f]) => {
+      if (mounted) {
+        setBalance(bal);
+        setFrozen(f);
+      }
     });
     return () => { mounted = false; };
-  }, [getWalletBalance]);
+  }, [getWalletBalance, isFrozen]);
 
   const handleContinue = () => {
     setError("");
+    if (frozen) {
+      setError("Wallet is frozen. Transactions are temporarily disabled.");
+      return;
+    }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setError("Please enter a valid amount.");
       return;

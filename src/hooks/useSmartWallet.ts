@@ -126,6 +126,16 @@ export function useSmartWallet() {
     return await contract.directSwap(router, data, { value });
   };
 
+  const freezeWallet = async () => {
+    const contract = await getContractWithSigner();
+    return await contract.freezeWallet();
+  };
+
+  const createUnfreezeRequest = async () => {
+    const contract = await getContractWithSigner();
+    return await contract.createUnfreezeRequest();
+  };
+
   return {
     contract,
     getContractWithSigner,
@@ -139,5 +149,7 @@ export function useSmartWallet() {
     isCurrentUserOwner,
     createMultisigSwap,
     directSwap,
+    freezeWallet,
+    createUnfreezeRequest,
   };
 }
