@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowUpRight, ArrowDownLeft, Users, ShieldAlert, FileText, Lock, Unlock } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, ArrowRightLeft, Copy, CheckCircle2, AlertCircle, ShieldCheck, Clock, Coins } from 'lucide-react';
 import { useSmartWallet } from '../hooks/useSmartWallet';
 import { Badge } from '../components/ui/Badge';
+import { Link } from 'react-router-dom';
+import { SMART_WALLET_ADDRESS } from '../config/contracts';
 
 export function Dashboard() {
   const { 
@@ -11,162 +13,253 @@ export function Dashboard() {
     getOwners, 
     getRequiredSignatures, 
     isFrozen, 
-    getTransactionCount,
-    isCurrentUserOwner
   } = useSmartWallet();
 
-  const [walletBalance, setWalletBalance] = useState<string>("0.000");
+  const [walletBalance, setWalletBalance] = useState<string>("0.0000");
+  const [ethPrice, setEthPrice] = useState<number>(0);
   const [owners, setOwners] = useState<string[]>([]);
   const [reqSignatures, setReqSignatures] = useState<number>(0);
   const [frozen, setFrozen] = useState<boolean>(false);
-  const [txCount, setTxCount] = useState<number>(0);
-  const [isOwner, setIsOwner] = useState<boolean>(false);
-  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    const fetchWalletData = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       try {
         const [
           balanceStr,
           ownersArr,
           reqSigs,
           frozenStatus,
-          count,
-          ownerStatus
         ] = await Promise.all([
           getWalletBalance(),
           getOwners(),
           getRequiredSignatures(),
           isFrozen(),
-          getTransactionCount(),
-          isCurrentUserOwner()
         ]);
+
+        // Fetch ETH Price safely
+        let price = 0;
+        try {
+          const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+          const data = await res.json();
+          price = data.ethereum?.usd || 0;
+        } catch (e) {
+          console.error("Failed to fetch ETH price");
+        }
 
         if (mounted) {
           setWalletBalance(balanceStr);
           setOwners(ownersArr);
           setReqSignatures(reqSigs);
           setFrozen(frozenStatus);
-          setTxCount(count);
-          setIsOwner(ownerStatus);
+          setEthPrice(price);
         }
       } catch (error) {
         console.error("Failed to fetch smart wallet data:", error);
-      } finally {
-        if (mounted) setLoading(false);
       }
     };
 
-    fetchWalletData();
-
-    // Optionally set up an interval for live updates, but fetching once on mount is enough for now
+    fetchData();
     return () => { mounted = false; };
-  }, [
-    getWalletBalance, 
-    getOwners, 
-    getRequiredSignatures, 
-    isFrozen, 
-    getTransactionCount,
-    isCurrentUserOwner
-  ]);
+  }, [getWalletBalance, getOwners, getRequiredSignatures, isFrozen]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(SMART_WALLET_ADDRESS);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const usdValue = (parseFloat(walletBalance) * ethPrice).toFixed(2);
+
+  // Mock Activity Data for layout purposes
+  const mockActivity = [
+    { id: 1, type: 'Received', amount: '+0.5 ETH', date: 'Today, 10:23 AM', status: 'Completed' },
+    { id: 2, type: 'Multisig', amount: 'Pending', date: 'Yesterday', status: 'Requires 1 more signature' },
+    { id: 3, type: 'Swap', amount: '0.1 ETH → 250 USDC', date: 'Oct 15', status: 'Completed' },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      {/* TOP SECTION */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Dashboard</h2>
-          <p className="text-slate-400">Manage your SmartVault assets securely.</p>
+          <p className="text-sm font-medium text-slate-400">Welcome back</p>
+          <div className="mt-1 flex items-center gap-3">
+            <h2 className="text-2xl font-bold tracking-tight text-white">
+              {shortenAddress(SMART_WALLET_ADDRESS)}
+            </h2>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-navy-700 bg-navy-800" onClick={handleCopy}>
+              {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-slate-300" />}
+            </Button>
+          </div>
         </div>
         <div>
-          {loading ? (
-            <Badge variant="outline">Loading...</Badge>
-          ) : isOwner ? (
-            <Badge variant="success">Owner</Badge>
-          ) : (
-            <Badge variant="secondary">Observer</Badge>
-          )}
+          <Badge variant="success" className="bg-emerald-400/10 text-emerald-400 border-emerald-400/20 px-3 py-1.5">
+            <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            Sepolia Testnet
+          </Badge>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Total Balance Card */}
-        <Card className="col-span-full md:col-span-2 lg:col-span-2 bg-gradient-to-br from-navy-800 to-navy-900 border-navy-700/50">
-          <CardHeader>
-            <CardTitle className="text-slate-400">Vault Balance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-4xl font-bold text-white tracking-tight">
-              {walletBalance} <span className="text-2xl text-teal-400">SEP</span>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* MAIN BALANCE CARD */}
+        <Card className="lg:col-span-2 bg-gradient-to-br from-navy-800 to-navy-900 border-navy-700/50 relative overflow-hidden">
+          <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-teal-400/5 blur-2xl"></div>
+          <CardContent className="p-6 sm:p-8">
+            <p className="text-sm font-medium text-slate-400">Total Wallet Balance</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-4xl sm:text-5xl font-bold tracking-tight text-white">{walletBalance}</span>
+              <span className="text-xl font-medium text-teal-400">ETH</span>
             </div>
-            <div className="text-slate-400">Sepolia Testnet</div>
-            
-            <div className="flex flex-wrap gap-3 pt-4">
-              <Button className="gap-2" disabled={!isOwner || frozen}>
-                <ArrowUpRight className="h-4 w-4" /> Send
-              </Button>
-              <Button variant="outline" className="gap-2">
-                <ArrowDownLeft className="h-4 w-4" /> Receive
-              </Button>
+            {ethPrice > 0 ? (
+              <p className="mt-1 text-slate-400">≈ ${usdValue} USD</p>
+            ) : (
+              <p className="mt-1 text-slate-400">Fetching USD value...</p>
+            )}
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link to="/send" className="flex-1">
+                <Button className="w-full gap-2 h-12 text-base shadow-lg shadow-teal-400/10">
+                  <ArrowUpRight className="h-5 w-5" /> Send
+                </Button>
+              </Link>
+              <Link to="/receive" className="flex-1">
+                <Button variant="outline" className="w-full gap-2 h-12 text-base">
+                  <ArrowDownLeft className="h-5 w-5" /> Receive
+                </Button>
+              </Link>
+              <Link to="/swap" className="flex-1">
+                <Button variant="secondary" className="w-full gap-2 h-12 text-base">
+                  <ArrowRightLeft className="h-5 w-5" /> Swap
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
 
-        {/* Vault Status Card */}
+        {/* SECURITY CARD */}
         <Card>
           <CardHeader>
-            <CardTitle>Vault Status</CardTitle>
-            <CardDescription>Current configuration</CardDescription>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-teal-400" />
+              <CardTitle>Security Status</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-1">
+              <p className="text-sm text-slate-400">Wallet Status</p>
+              <div className="flex items-center gap-2 mt-1">
+                {frozen ? (
+                  <Badge variant="warning" className="bg-red-500/10 text-red-400 border-red-500/20">
+                    <AlertCircle className="mr-1.5 h-3 w-3" /> Frozen
+                  </Badge>
+                ) : (
+                  <Badge variant="success" className="bg-emerald-400/10 text-emerald-400 border-emerald-400/20">
+                    <CheckCircle2 className="mr-1.5 h-3 w-3" /> Active
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-slate-400">Multisig Configuration</p>
+              <p className="text-lg font-medium text-white">
+                {reqSignatures} of {owners.length || '-'} signatures
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-slate-400">Total Owners</p>
+              <p className="text-lg font-medium text-white">{owners.length || '-'}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ASSETS SECTION */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-teal-400" />
+              <CardTitle>Assets</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-navy-700 pb-2">
-                <span className="text-slate-400 flex items-center gap-2"><Lock className="h-4 w-4"/> Status</span>
-                {frozen ? (
-                  <span className="text-red-400 flex items-center gap-1"><Lock className="h-3 w-3" /> Frozen</span>
-                ) : (
-                  <span className="text-emerald-400 flex items-center gap-1"><Unlock className="h-3 w-3" /> Active</span>
-                )}
+              {/* Native ETH */}
+              <div className="flex items-center justify-between rounded-xl border border-navy-700 bg-navy-800/50 p-4 transition-colors hover:bg-navy-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-900 border border-navy-700">
+                    <span className="text-xl">Ξ</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Ethereum</p>
+                    <p className="text-xs text-slate-400">ETH</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-white">{walletBalance}</p>
+                  {ethPrice > 0 && <p className="text-xs text-slate-400">${usdValue}</p>}
+                </div>
               </div>
-              <div className="flex items-center justify-between border-b border-navy-700 pb-2">
-                <span className="text-slate-400 flex items-center gap-2"><Users className="h-4 w-4"/> Owners</span>
-                <span className="text-white">{owners.length}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-navy-700 pb-2">
-                <span className="text-slate-400 flex items-center gap-2"><ShieldAlert className="h-4 w-4"/> Required Sigs</span>
-                <span className="text-white">{reqSignatures} / {owners.length}</span>
-              </div>
-              <div className="flex items-center justify-between pb-2">
-                <span className="text-slate-400 flex items-center gap-2"><FileText className="h-4 w-4"/> Transactions</span>
-                <span className="text-white">{txCount}</span>
+              
+              {/* Mock USDC for visual layout */}
+              <div className="flex items-center justify-between rounded-xl border border-navy-700 bg-navy-800/50 p-4 transition-colors hover:bg-navy-800 opacity-60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-900 border border-navy-700">
+                    <span className="text-xl text-blue-400">$</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">USD Coin</p>
+                    <p className="text-xs text-slate-400">USDC</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-white">0.00</p>
+                  <p className="text-xs text-slate-400">$0.00</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Owners List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Vault Owners</CardTitle>
-          <CardDescription>Addresses authorized to sign transactions.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {owners.length > 0 ? (
-              owners.map((owner, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-lg border border-navy-700 bg-navy-800/50 p-3">
-                  <span className="text-sm font-medium text-slate-300 break-all">{owner}</span>
+        {/* ACTIVITY SECTION */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-teal-400" />
+                <CardTitle>Recent Activity</CardTitle>
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs text-slate-400">View All</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {mockActivity.map((activity) => (
+                <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-navy-700 bg-navy-800/50 p-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-white">{activity.type}</p>
+                      <Badge variant="secondary" className="text-[10px]">{activity.status}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">{activity.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-medium ${activity.type === 'Received' ? 'text-emerald-400' : 'text-white'}`}>
+                      {activity.amount}
+                    </p>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-500">No owners found.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
