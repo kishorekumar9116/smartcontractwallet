@@ -116,6 +116,16 @@ export function useSmartWallet() {
     return await isOwner(address);
   }, [address, isOwner]);
 
+  const createMultisigSwap = async (router: string, value: string, data: string) => {
+    const contract = await getContractWithSigner();
+    return await contract.createMultisigSwap(router, value, data);
+  };
+
+  const directSwap = async (router: string, data: string, value: string) => {
+    const contract = await getContractWithSigner();
+    return await contract.directSwap(router, data, { value });
+  };
+
   return {
     contract,
     getContractWithSigner,
@@ -127,5 +137,7 @@ export function useSmartWallet() {
     getTransactionDetails,
     isOwner,
     isCurrentUserOwner,
+    createMultisigSwap,
+    directSwap,
   };
 }
