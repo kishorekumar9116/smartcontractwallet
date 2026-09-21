@@ -1,8 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ArrowUpRight, ArrowDownLeft, Plus } from 'lucide-react';
+import { useWallet } from '../context/WalletContext';
 
 export function Dashboard() {
+  const { balance } = useWallet();
+
   return (
     <div className="space-y-6">
       <div>
@@ -18,9 +21,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-4xl font-bold text-white tracking-tight">
-              0.000 <span className="text-2xl text-teal-400">ETH</span>
+              {balance !== null ? balance : "0.000"} <span className="text-2xl text-teal-400">SEP</span>
             </div>
-            <div className="text-slate-400">$0.00 USD</div>
+            <div className="text-slate-400">Sepolia Testnet</div>
             
             <div className="flex flex-wrap gap-3 pt-4">
               <Button className="gap-2">
@@ -52,11 +55,11 @@ export function Dashboard() {
               </div>
               <div className="flex items-center justify-between border-b border-navy-700 pb-2">
                 <span className="text-slate-400">Block Height</span>
-                <span className="text-white">5,432,109</span>
+                <span className="text-white">Live</span>
               </div>
               <div className="flex items-center justify-between pb-2">
                 <span className="text-slate-400">Gas Price</span>
-                <span className="text-white">12 Gwei</span>
+                <span className="text-white">Auto</span>
               </div>
             </div>
           </CardContent>

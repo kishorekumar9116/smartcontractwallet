@@ -7,10 +7,12 @@ import { Swap } from './pages/Swap';
 import { Multisig } from './pages/Multisig';
 import { Security } from './pages/Security';
 import { Settings } from './pages/Settings';
+import { Welcome } from './pages/Welcome';
 
 function App() {
   return (
     <Routes>
+      <Route path="/welcome" element={<Welcome />} />
       <Route element={<MainLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/send" element={<Send />} />
@@ -19,8 +21,8 @@ function App() {
         <Route path="/multisig" element={<Multisig />} />
         <Route path="/security" element={<Security />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
