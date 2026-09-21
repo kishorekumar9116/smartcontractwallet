@@ -7,10 +7,11 @@ import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
 import { SMART_WALLET_ADDRESS } from '../config/contracts';
 import { WalletAddress } from '../components/ui/WalletAddress';
-import { TransactionCard } from '../components/ui/TransactionCard';
 import { Skeleton } from '../components/ui/Skeleton';
+import { useWallet } from '../context/WalletContext';
 
 export function Dashboard() {
+  const { balance: eoaBalance, address } = useWallet();
   const { 
     getWalletBalance, 
     getOwners, 
@@ -19,7 +20,6 @@ export function Dashboard() {
   } = useSmartWallet();
 
   const [walletBalance, setWalletBalance] = useState<string>("0.0000");
-  const [ethPrice, setEthPrice] = useState<number>(0);
   const [owners, setOwners] = useState<string[]>([]);
   const [reqSignatures, setReqSignatures] = useState<number>(0);
   const [frozen, setFrozen] = useState<boolean>(false);
@@ -42,22 +42,11 @@ export function Dashboard() {
           isFrozen(),
         ]);
 
-        // Fetch ETH Price safely
-        let price = 0;
-        try {
-          const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-          const data = await res.json();
-          price = data.ethereum?.usd || 0;
-        } catch (e) {
-          console.error("Failed to fetch ETH price");
-        }
-
         if (mounted) {
           setWalletBalance(balanceStr);
           setOwners(ownersArr);
           setReqSignatures(reqSigs);
           setFrozen(frozenStatus);
-          setEthPrice(price);
           setIsLoading(false);
         }
       } catch (error) {
@@ -69,15 +58,6 @@ export function Dashboard() {
     fetchData();
     return () => { mounted = false; };
   }, [getWalletBalance, getOwners, getRequiredSignatures, isFrozen]);
-
-  const usdValue = (parseFloat(walletBalance) * ethPrice).toFixed(2);
-
-  // Mock Activity Data for layout purposes
-  const mockActivity = [
-    { id: 1, type: 'Received', amount: '+0.5 ETH', date: 'Today, 10:23 AM', status: 'Completed' },
-    { id: 2, type: 'Multisig', amount: 'Pending', date: 'Yesterday', status: 'Requires 1 more signature' },
-    { id: 3, type: 'Swap', amount: '0.1 ETH → 250 USDC', date: 'Oct 15', status: 'Completed' },
-  ];
 
   return (
     <div className="space-y-8 page-transition">
@@ -102,25 +82,32 @@ export function Dashboard() {
         <Card className="lg:col-span-2 bg-gradient-to-br from-navy-800 to-navy-900 border-navy-700/50 relative overflow-hidden">
           <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-teal-400/5 blur-2xl"></div>
           <CardContent className="p-6 sm:p-8">
-            <p className="text-sm font-medium text-slate-400">Total Wallet Balance</p>
-            {isLoading ? (
-              <div className="mt-2 space-y-2">
-                <Skeleton className="h-12 w-48" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            ) : (
-              <>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-bold tracking-tight text-white">{walletBalance}</span>
-                  <span className="text-xl font-medium text-teal-400">ETH</span>
-                </div>
-                {ethPrice > 0 ? (
-                  <p className="mt-1 text-slate-400 transition-opacity animate-fade-in">≈ ${usdValue} USD</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-slate-400">SmartVault Balance</p>
+                {isLoading ? (
+                  <div className="mt-2 space-y-2">
+                    <Skeleton className="h-12 w-48" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
                 ) : (
-                  <p className="mt-1 text-slate-400">Fetching USD value...</p>
+                  <>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-4xl sm:text-5xl font-bold tracking-tight text-white">{walletBalance}</span>
+                      <span className="text-xl font-medium text-teal-400">Sepolia ETH</span>
+                    </div>
+                  </>
                 )}
-              </>
-            )}
+              </div>
+              
+              <div className="text-right border-l border-navy-700 pl-6">
+                <p className="text-xs font-medium text-slate-400">Your Connected Wallet</p>
+                <div className="mt-1 flex items-baseline gap-1 justify-end">
+                  <span className="text-lg font-bold text-slate-200">{eoaBalance || "0.0000"}</span>
+                  <span className="text-sm text-slate-400">ETH</span>
+                </div>
+              </div>
+            </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
               <Link to="/send" className="flex-1">
@@ -180,85 +167,6 @@ export function Dashboard() {
               {isLoading ? <Skeleton className="h-7 w-12 mt-1" /> : (
                 <p className="text-lg font-medium text-white">{owners.length || '-'}</p>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* ASSETS SECTION */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-teal-400" />
-              <CardTitle>Assets</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Native ETH */}
-              <div className="flex items-center justify-between rounded-xl border border-navy-700 bg-navy-800/50 p-4 transition-colors hover:bg-navy-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-900 border border-navy-700">
-                    <span className="text-xl">Ξ</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Ethereum</p>
-                    <p className="text-xs text-slate-400">ETH</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-white">{walletBalance}</p>
-                  {ethPrice > 0 && <p className="text-xs text-slate-400">${usdValue}</p>}
-                </div>
-              </div>
-              
-              {/* Mock USDC for visual layout */}
-              <div className="flex items-center justify-between rounded-xl border border-navy-700 bg-navy-800/50 p-4 transition-colors hover:bg-navy-800 opacity-60">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-900 border border-navy-700">
-                    <span className="text-xl text-blue-400">$</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">USD Coin</p>
-                    <p className="text-xs text-slate-400">USDC</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-white">0.00</p>
-                  <p className="text-xs text-slate-400">$0.00</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ACTIVITY SECTION */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-teal-400" />
-                <CardTitle>Recent Activity</CardTitle>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs text-slate-400">View All</Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {mockActivity.map((activity) => (
-                <TransactionCard
-                  key={activity.id}
-                  title={activity.type}
-                  description={activity.date}
-                  amount={activity.amount}
-                  status={
-                    activity.status === 'Completed' ? 'success' : 
-                    activity.status.includes('Pending') || activity.status.includes('Requires') ? 'pending' : 'default'
-                  }
-                  icon={<Clock className="h-5 w-5" />}
-                />
-              ))}
             </div>
           </CardContent>
         </Card>
