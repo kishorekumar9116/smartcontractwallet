@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowUpRight, ArrowDownLeft, ArrowRightLeft, Copy, CheckCircle2, AlertCircle, ShieldCheck, Clock, Coins } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldCheck, Clock, Coins } from 'lucide-react';
 import { useSmartWallet } from '../hooks/useSmartWallet';
 import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
 import { SMART_WALLET_ADDRESS } from '../config/contracts';
+import { WalletAddress } from '../components/ui/WalletAddress';
+import { TransactionCard } from '../components/ui/TransactionCard';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export function Dashboard() {
   const { 
@@ -20,7 +23,7 @@ export function Dashboard() {
   const [owners, setOwners] = useState<string[]>([]);
   const [reqSignatures, setReqSignatures] = useState<number>(0);
   const [frozen, setFrozen] = useState<boolean>(false);
-  const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -55,9 +58,11 @@ export function Dashboard() {
           setReqSignatures(reqSigs);
           setFrozen(frozenStatus);
           setEthPrice(price);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Failed to fetch smart wallet data:", error);
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -65,13 +70,6 @@ export function Dashboard() {
     return () => { mounted = false; };
   }, [getWalletBalance, getOwners, getRequiredSignatures, isFrozen]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(SMART_WALLET_ADDRESS);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   const usdValue = (parseFloat(walletBalance) * ethPrice).toFixed(2);
 
   // Mock Activity Data for layout purposes
@@ -82,18 +80,13 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 page-transition">
       {/* TOP SECTION */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-400">Welcome back</p>
-          <div className="mt-1 flex items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight text-white">
-              {shortenAddress(SMART_WALLET_ADDRESS)}
-            </h2>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-navy-700 bg-navy-800" onClick={handleCopy}>
-              {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-slate-300" />}
-            </Button>
+          <div className="mt-2">
+            <WalletAddress address={SMART_WALLET_ADDRESS} className="text-2xl font-bold tracking-tight text-white" />
           </div>
         </div>
         <div>
@@ -110,14 +103,23 @@ export function Dashboard() {
           <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-teal-400/5 blur-2xl"></div>
           <CardContent className="p-6 sm:p-8">
             <p className="text-sm font-medium text-slate-400">Total Wallet Balance</p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-bold tracking-tight text-white">{walletBalance}</span>
-              <span className="text-xl font-medium text-teal-400">ETH</span>
-            </div>
-            {ethPrice > 0 ? (
-              <p className="mt-1 text-slate-400">≈ ${usdValue} USD</p>
+            {isLoading ? (
+              <div className="mt-2 space-y-2">
+                <Skeleton className="h-12 w-48" />
+                <Skeleton className="h-4 w-24" />
+              </div>
             ) : (
-              <p className="mt-1 text-slate-400">Fetching USD value...</p>
+              <>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-bold tracking-tight text-white">{walletBalance}</span>
+                  <span className="text-xl font-medium text-teal-400">ETH</span>
+                </div>
+                {ethPrice > 0 ? (
+                  <p className="mt-1 text-slate-400 transition-opacity animate-fade-in">≈ ${usdValue} USD</p>
+                ) : (
+                  <p className="mt-1 text-slate-400">Fetching USD value...</p>
+                )}
+              </>
             )}
 
             <div className="mt-8 flex flex-wrap gap-4">
@@ -166,14 +168,18 @@ export function Dashboard() {
 
             <div className="space-y-1">
               <p className="text-sm text-slate-400">Multisig Configuration</p>
-              <p className="text-lg font-medium text-white">
-                {reqSignatures} of {owners.length || '-'} signatures
-              </p>
+              {isLoading ? <Skeleton className="h-7 w-32 mt-1" /> : (
+                <p className="text-lg font-medium text-white">
+                  {reqSignatures} of {owners.length || '-'} signatures
+                </p>
+              )}
             </div>
 
             <div className="space-y-1">
               <p className="text-sm text-slate-400">Total Owners</p>
-              <p className="text-lg font-medium text-white">{owners.length || '-'}</p>
+              {isLoading ? <Skeleton className="h-7 w-12 mt-1" /> : (
+                <p className="text-lg font-medium text-white">{owners.length || '-'}</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -241,20 +247,17 @@ export function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {mockActivity.map((activity) => (
-                <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-navy-700 bg-navy-800/50 p-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-white">{activity.type}</p>
-                      <Badge variant="secondary" className="text-[10px]">{activity.status}</Badge>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">{activity.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-medium ${activity.type === 'Received' ? 'text-emerald-400' : 'text-white'}`}>
-                      {activity.amount}
-                    </p>
-                  </div>
-                </div>
+                <TransactionCard
+                  key={activity.id}
+                  title={activity.type}
+                  description={activity.date}
+                  amount={activity.amount}
+                  status={
+                    activity.status === 'Completed' ? 'success' : 
+                    activity.status.includes('Pending') || activity.status.includes('Requires') ? 'pending' : 'default'
+                  }
+                  icon={<Clock className="h-5 w-5" />}
+                />
               ))}
             </div>
           </CardContent>

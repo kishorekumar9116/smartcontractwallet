@@ -8,6 +8,12 @@
   }
 }
 
+@layer utilities {
+  .page-transition {
+    @apply animate-fade-in-up;
+  }
+}
+
 /* Custom scrollbar for webkit */
 ::-webkit-scrollbar {
   width: 8px;

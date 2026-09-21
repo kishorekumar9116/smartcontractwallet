@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, ArrowDown, Settings, AlertTriangle, CheckCircle2, Loader2, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Settings, AlertTriangle, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSmartWallet } from '../hooks/useSmartWallet';
 import { useWallet } from '../context/WalletContext';
 import { ROUTERS } from '../config/contracts';
 import { parseEther } from 'ethers';
+import { TokenSelector } from '../components/ui/TokenSelector';
+import { Modal } from '../components/ui/Modal';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
 type SwapMode = 'direct' | 'multisig';
 type SwapState = 'form' | 'pending' | 'success';
@@ -88,7 +91,7 @@ export function Swap() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-6 page-transition">
       <div className="flex items-center gap-4">
         <Link to="/">
           <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
@@ -99,211 +102,186 @@ export function Swap() {
       </div>
 
       <Card className="border-navy-700 bg-navy-800/80 shadow-xl overflow-hidden relative">
-        {step === 'form' && (
-          <>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Swap</CardTitle>
-                  <CardDescription>Exchange tokens securely</CardDescription>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-              
-              {/* Swap Mode Toggle */}
-              <div className="flex rounded-lg bg-navy-900/50 p-1 border border-navy-700">
-                <button
-                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                    mode === 'direct' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:text-white'
-                  }`}
-                  onClick={() => setMode('direct')}
-                >
-                  Direct Swap
-                </button>
-                <button
-                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                    mode === 'multisig' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:text-white'
-                  }`}
-                  onClick={() => setMode('multisig')}
-                >
-                  Multisig Swap
-                </button>
-              </div>
-
-              {/* Mode Explanation */}
-              <div className="rounded-lg bg-navy-900/30 p-3 text-sm text-slate-300 border border-navy-700/50">
-                {mode === 'direct' ? (
-                  <p>Swap immediately using your wallet. Executes the trade on the DEX instantly.</p>
-                ) : (
-                  <p>Require approval from other wallet owners before executing the swap.</p>
-                )}
-              </div>
-
-              {/* Inputs */}
-              <div className="space-y-2">
-                <div className="rounded-2xl border border-navy-700 bg-navy-900/50 p-4 relative">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-400">From</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="number"
-                      placeholder="0.0"
-                      value={amountIn}
-                      onChange={(e) => setAmountIn(e.target.value)}
-                      className="w-full bg-transparent text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
-                    />
-                    <div className="flex shrink-0 items-center gap-2 rounded-full bg-navy-800 border border-navy-600 px-3 py-1.5">
-                      <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center">Ξ</div>
-                      <span className="font-medium text-white">ETH</span>
-                      <span className="text-xs text-slate-400">▼</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative flex justify-center -my-5 z-10">
-                  <div className="rounded-xl border-4 border-navy-800 bg-navy-700 p-2 text-slate-300 hover:text-teal-400 transition-colors cursor-pointer">
-                    <ArrowDown className="h-4 w-4" />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-navy-700 bg-navy-900/50 p-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-400">To (Estimated)</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="text"
-                      readOnly
-                      value={estimatedOut}
-                      placeholder="0.0"
-                      className="w-full bg-transparent text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
-                    />
-                    <div className="flex shrink-0 items-center gap-2 rounded-full bg-navy-800 border border-navy-600 px-3 py-1.5">
-                      <div className="h-6 w-6 rounded-full bg-blue-900 flex items-center justify-center text-blue-400">$</div>
-                      <span className="font-medium text-white">USDC</span>
-                      <span className="text-xs text-slate-400">▼</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Swap Details */}
-              <div className="rounded-xl border border-navy-700 p-4 space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Rate</span>
-                  <span className="text-white">1 ETH = 2,500 USDC</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Minimum received</span>
-                  <span className="text-white">{amountIn ? (Number(estimatedOut) * 0.995).toFixed(2) : "0.00"} USDC</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Network fee</span>
-                  <span className="text-white">~0.003 ETH</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Slippage tolerance</span>
-                  <span className="text-white">0.5%</span>
-                </div>
-                
-                {mode === 'multisig' && (
-                  <div className="flex justify-between pt-3 mt-3 border-t border-navy-700">
-                    <span className="text-teal-400 font-medium">Required approvals</span>
-                    <span className="text-white font-medium">{reqSignatures} of {owners.length}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Error and Warnings */}
-              {!isRouterConfigured && (
-                <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-                  <p className="text-xs leading-relaxed text-amber-200/80">
-                    Router not configured for this network. Swap is disabled to prevent executing invalid calldata.
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
-                  {error}
-                </div>
-              )}
-
-              {/* Action Button */}
-              <Button 
-                className="w-full h-12 text-base shadow-lg shadow-teal-400/10" 
-                onClick={handleSwapAction}
-                disabled={!isRouterConfigured}
-              >
-                {mode === 'direct' ? 'Swap Now' : 'Create Swap Request'}
-              </Button>
-            </CardContent>
-          </>
-        )}
-
-        {/* PENDING / SUCCESS MODALS */}
-        {step !== 'form' && (
-          <div className="absolute inset-0 z-10 flex flex-col bg-navy-800/95 backdrop-blur-sm p-6 sm:p-8">
-            
-            {step === 'pending' && (
-              <div className="flex h-full flex-col items-center justify-center text-center space-y-6">
-                <Loader2 className="h-16 w-16 animate-spin text-teal-400" />
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {mode === 'direct' ? 'Executing Swap' : 'Creating Swap Request'}
-                  </h3>
-                  <p className="text-slate-400">Please wait while the transaction is being processed...</p>
-                </div>
-              </div>
-            )}
-
-            {step === 'success' && (
-              <div className="flex h-full flex-col items-center justify-center text-center space-y-6">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 border-2 border-emerald-500/20">
-                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    {mode === 'direct' ? 'Swap Successful' : 'Swap Request Created'}
-                  </h3>
-                  <p className="text-slate-400 mb-6">
-                    {mode === 'direct' 
-                      ? 'Your tokens have been successfully swapped.' 
-                      : 'Your swap request is now pending approval in the Multisig page.'}
-                  </p>
-                  
-                  {txHash && (
-                    <a 
-                      href={`https://sepolia.etherscan.io/tx/${txHash}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full"
-                    >
-                      <Button variant="outline" className="w-full gap-2">
-                        View on Explorer <ArrowUpRight className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  )}
-                </div>
-
-                <div className="pt-4 w-full">
-                  <Button className="w-full h-12" onClick={() => setStep('form')}>
-                    Done
-                  </Button>
-                </div>
-              </div>
-            )}
-            
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Swap</CardTitle>
+              <CardDescription>Exchange tokens securely</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
-        )}
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          
+          {/* Swap Mode Toggle */}
+          <div className="flex rounded-lg bg-navy-900/50 p-1 border border-navy-700 relative overflow-hidden">
+            <div 
+              className={`absolute inset-y-1 w-[calc(50%-4px)] bg-teal-500/20 rounded-md transition-all duration-300 ease-out ${mode === 'direct' ? 'left-1' : 'left-[calc(50%+2px)]'}`}
+            />
+            <button
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors relative z-10 ${
+                mode === 'direct' ? 'text-teal-400' : 'text-slate-400 hover:text-white'
+              }`}
+              onClick={() => setMode('direct')}
+            >
+              Direct Swap
+            </button>
+            <button
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors relative z-10 ${
+                mode === 'multisig' ? 'text-teal-400' : 'text-slate-400 hover:text-white'
+              }`}
+              onClick={() => setMode('multisig')}
+            >
+              Multisig Swap
+            </button>
+          </div>
+
+          {/* Mode Explanation */}
+          <div className="rounded-lg bg-navy-900/30 p-3 text-sm text-slate-300 border border-navy-700/50 transition-all duration-300">
+            {mode === 'direct' ? (
+              <p className="animate-fade-in">Swap immediately using your wallet. Executes the trade on the DEX instantly.</p>
+            ) : (
+              <p className="animate-fade-in">Require approval from other wallet owners before executing the swap.</p>
+            )}
+          </div>
+
+          {/* Inputs */}
+          <div className="space-y-2">
+            <div className="rounded-2xl border border-navy-700 bg-navy-900/50 p-4 relative group focus-within:border-teal-400 transition-colors">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-slate-400">From</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  placeholder="0.0"
+                  value={amountIn}
+                  onChange={(e) => setAmountIn(e.target.value)}
+                  className="w-full bg-transparent text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
+                />
+                <TokenSelector symbol="ETH" icon="Ξ" />
+              </div>
+            </div>
+
+            <div className="relative flex justify-center -my-5 z-10">
+              <div className="rounded-xl border-4 border-navy-800 bg-navy-700 p-2 text-slate-300 hover:text-teal-400 hover:rotate-180 transition-all duration-300 cursor-pointer">
+                <ArrowDown className="h-4 w-4" />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-navy-700 bg-navy-900/50 p-4 opacity-80 group">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-slate-400">To (Estimated)</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="text"
+                  readOnly
+                  value={estimatedOut}
+                  placeholder="0.0"
+                  className="w-full bg-transparent text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
+                />
+                <TokenSelector symbol="USDC" icon={<span className="text-blue-400">$</span>} />
+              </div>
+            </div>
+          </div>
+
+          {/* Swap Details */}
+          <div className="rounded-xl border border-navy-700 p-4 space-y-3 text-sm transition-all duration-300">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Rate</span>
+              <span className="text-white">1 ETH = 2,500 USDC</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Minimum received</span>
+              <span className="text-white">{amountIn ? (Number(estimatedOut) * 0.995).toFixed(2) : "0.00"} USDC</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Network fee</span>
+              <span className="text-white">~0.003 ETH</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Slippage tolerance</span>
+              <span className="text-white">0.5%</span>
+            </div>
+            
+            {mode === 'multisig' && (
+              <div className="flex justify-between pt-3 mt-3 border-t border-navy-700 animate-fade-in-up">
+                <span className="text-teal-400 font-medium">Required approvals</span>
+                <span className="text-white font-medium">{reqSignatures} of {owners.length}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Error and Warnings */}
+          {!isRouterConfigured && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 animate-fade-in-up">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+              <p className="text-xs leading-relaxed text-amber-200/80">
+                Router not configured for this network. Swap is disabled to prevent executing invalid calldata.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20 animate-fade-in-up">
+              {error}
+            </div>
+          )}
+
+          {/* Action Button */}
+          <Button 
+            className="w-full h-12 text-base shadow-lg shadow-teal-400/10 transition-all duration-300" 
+            onClick={handleSwapAction}
+            disabled={!isRouterConfigured}
+          >
+            {mode === 'direct' ? 'Swap Now' : 'Create Swap Request'}
+          </Button>
+        </CardContent>
       </Card>
+
+      {/* PENDING MODAL */}
+      <Modal isOpen={step === 'pending'} onClose={() => {}} title={mode === 'direct' ? 'Executing Swap' : 'Creating Request'}>
+        <LoadingSpinner text="Please wait while the transaction is being processed..." size="lg" className="py-8" />
+      </Modal>
+
+      {/* SUCCESS MODAL */}
+      <Modal 
+        isOpen={step === 'success'} 
+        onClose={() => setStep('form')} 
+        title={mode === 'direct' ? 'Swap Successful' : 'Request Created'}
+        footer={
+          <Button className="w-full h-12" onClick={() => setStep('form')}>
+            Done
+          </Button>
+        }
+      >
+        <div className="flex flex-col items-center justify-center text-center space-y-6 py-4">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 border-2 border-emerald-500/20">
+            <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {mode === 'direct' ? 'Swap Successful' : 'Swap Request Created'}
+            </h3>
+            <p className="text-slate-400 mb-6">
+              {mode === 'direct' 
+                ? 'Your tokens have been successfully swapped.' 
+                : 'Your swap request is now pending approval.'}
+            </p>
+            {txHash && (
+              <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex w-full">
+                <Button variant="outline" className="w-full gap-2">
+                  View on Explorer <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </a>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
