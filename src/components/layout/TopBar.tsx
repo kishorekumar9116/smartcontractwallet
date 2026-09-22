@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bell, Wallet, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -5,6 +6,7 @@ import { useWallet } from '../../context/WalletContext';
 
 export function TopBar() {
   const { address, disconnectWallet } = useWallet();
+  const [hasNotifications] = useState(false); // Set to true to show the notification dot
 
   const shortenAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -28,7 +30,9 @@ export function TopBar() {
         
         <Button variant="ghost" size="icon" className="relative hidden sm:flex">
           <Bell className="h-5 w-5" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-teal-400 ring-2 ring-navy-900"></span>
+          {hasNotifications && (
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-teal-400 ring-2 ring-navy-900"></span>
+          )}
         </Button>
 
         {address && (

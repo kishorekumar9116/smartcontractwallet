@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { BrowserProvider, formatEther } from 'ethers';
 import { handleWalletError } from '../lib/errors';
+import { Web3Auth } from "@web3auth/modal";
+import { CHAIN_NAMESPACES } from "@web3auth/base";
+import type { IProvider } from "@web3auth/base";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 
 export const SEPOLIA_CHAIN_ID = 11155111n; // 0xaa36a7
 export const SEPOLIA_CHAIN_ID_HEX = '0xaa36a7';
@@ -14,6 +18,7 @@ interface WalletContextState {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchNetwork: () => Promise<void>;
+  loginWithWeb3Auth: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
@@ -24,6 +29,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<bigint | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
+  const [web3authProvider, setWeb3authProvider] = useState<IProvider | null>(null);
 
   const fetchBalance = async (provider: BrowserProvider, account: string) => {
     try {
@@ -64,7 +71,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const disconnectWallet = () => {
+  const loginWithWeb3Auth = async () => {
+    if (!web3auth) {
+      setError("Web3Auth not initialized. Please set your Client ID in WalletContext.tsx");
+      return;
+    }
+    try {
+      setIsConnecting(true);
+      setError(null);
+      const provider = await web3auth.connect();
+      setWeb3authProvider(provider);
+      if (provider) {
+        const ethersProvider = new BrowserProvider(provider as any);
+        const accounts = await ethersProvider.send("eth_accounts", []);
+        if (accounts.length > 0) {
+          setAddress(accounts[0]);
+          const network = await ethersProvider.getNetwork();
+          setChainId(network.chainId);
+          await fetchBalance(ethersProvider, accounts[0]);
+        }
+      }
+    } catch (err: any) {
+      setError(handleWalletError(err));
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    if (web3auth && web3auth.connected) {
+      await web3auth.logout();
+      setWeb3authProvider(null);
+    }
     setAddress(null);
     setBalance(null);
     setChainId(null);
@@ -104,6 +142,60 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Web3Auth Initialization
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const clientId = "BMYOdt_d8CgW1oO3WgENzESRhhHSf6a1gHJUyu8Dyvu-IYbNRC5At370-efd_dp2dCbuTj51_WNP-PsHtOZqokk"; // Replace with your Web3Auth Client ID!
+        
+        const chainConfig = {
+          chainNamespace: CHAIN_NAMESPACES.EIP155,
+          chainId: SEPOLIA_CHAIN_ID_HEX,
+          rpcTarget: "https://rpc.sepolia.org",
+          displayName: "Sepolia Testnet",
+          blockExplorerUrl: "https://sepolia.etherscan.io",
+          ticker: "SEP",
+          tickerName: "SepoliaETH",
+        };
+
+        const privateKeyProvider = new EthereumPrivateKeyProvider({
+          config: { chainConfig }
+        });
+
+        const web3authInstance = new Web3Auth({
+          clientId,
+          web3AuthNetwork: "sapphire_devnet",
+          privateKeyProvider,
+        });
+
+        setWeb3auth(web3authInstance);
+        await web3authInstance.initModal();
+        
+        if (web3authInstance.provider) {
+          setWeb3authProvider(web3authInstance.provider);
+        }
+      } catch (error) {
+        console.error("Web3Auth init error:", error);
+      }
+    };
+    init();
+  }, []);
+
+  // Eager connection - runs once on mount
+  useEffect(() => {
+    if (window.ethereum) {
+      const provider = new BrowserProvider(window.ethereum);
+      provider.listAccounts().then((accounts) => {
+        if (accounts.length > 0) {
+          setAddress(accounts[0].address);
+          provider.getNetwork().then((net) => setChainId(net.chainId));
+          fetchBalance(provider, accounts[0].address);
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Event listeners
   useEffect(() => {
     if (window.ethereum) {
       const handleAccountsChanged = (accounts: string[]) => {
@@ -127,16 +219,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', handleChainChanged);
 
-      // Try eager connection
-      const provider = new BrowserProvider(window.ethereum);
-      provider.listAccounts().then((accounts) => {
-        if (accounts.length > 0) {
-          setAddress(accounts[0].address);
-          provider.getNetwork().then((net) => setChainId(net.chainId));
-          fetchBalance(provider, accounts[0].address);
-        }
-      }).catch(() => {});
-
       return () => {
         if (window.ethereum.removeListener) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
@@ -157,6 +239,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connectWallet,
         disconnectWallet,
         switchNetwork,
+        loginWithWeb3Auth,
       }}
     >
       {children}

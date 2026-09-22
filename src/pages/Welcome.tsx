@@ -5,7 +5,7 @@ import { useWallet } from '../context/WalletContext';
 import { Navigate } from 'react-router-dom';
 
 export function Welcome() {
-  const { address, connectWallet, isConnecting, error } = useWallet();
+  const { address, connectWallet, isConnecting, error, loginWithWeb3Auth } = useWallet();
 
   // If already connected, redirect to dashboard
   if (address) {
@@ -32,10 +32,20 @@ export function Welcome() {
           </div>
 
           <div className="w-full space-y-3">
-            <Button variant="outline" className="w-full h-12" disabled>
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={loginWithWeb3Auth}
+              disabled={isConnecting}
+            >
               Continue with Google
             </Button>
-            <Button variant="outline" className="w-full h-12" disabled>
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={loginWithWeb3Auth}
+              disabled={isConnecting}
+            >
               Continue with X
             </Button>
             

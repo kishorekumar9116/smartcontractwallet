@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@types/qrcode.react": "^1.0.5",
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/modal": "^11.4.1",
     "clsx": "^2.1.1",
     "ethers": "^6.17.0",
     "lucide-react": "^1.47.0",
