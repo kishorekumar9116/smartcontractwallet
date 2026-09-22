@@ -19,11 +19,11 @@ export function Welcome() {
         <div className="absolute -bottom-[10%] -right-[10%] h-[40%] w-[40%] rounded-full bg-teal-400/5 blur-[120px]" />
       </div>
 
-      <Card className="relative z-10 w-full max-w-md border-navy-700 bg-navy-900/50 p-8 shadow-2xl backdrop-blur-xl">
+      <Card className="relative z-10 w-full max-w-md border-navy-700 bg-navy-900/50 p-8 backdrop-blur-xl">
         <CardContent className="flex flex-col items-center space-y-8 p-0">
           <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-400 shadow-[0_0_30px_rgba(100,255,218,0.3)]">
-              <Shield className="h-8 w-8 text-navy-900" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl">
+              <img src="/logo.png" alt="SmartVault Logo" className="h-full w-full object-contain drop-shadow-none" />
             </div>
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tight text-white">SmartVault</h1>

@@ -8,14 +8,14 @@ export default {
     extend: {
       colors: {
         navy: {
-          900: '#0A192F',
-          800: '#112240',
-          700: '#233554',
-          600: '#324b72',
+          900: '#000000', // Deep Black
+          800: '#111111', // Very Dark Gray
+          700: '#222222', // Dark Gray
+          600: '#333333', // Gray
         },
         teal: {
-          400: '#64FFDA',
-          500: '#14b8a6',
+          400: '#f97316', // Orange 500
+          500: '#ea580c', // Orange 600
         }
       },
       fontFamily: {

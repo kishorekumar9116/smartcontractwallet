@@ -21,6 +21,7 @@ export function Send() {
   
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [txType, setTxType] = useState<'direct' | 'multisig'>('multisig');
   
   const [step, setStep] = useState<SendState>('form');
   const [error, setError] = useState("");
@@ -64,16 +65,22 @@ export function Send() {
     try {
       const contract = await getContractWithSigner();
       const value = parseEther(amount);
-      const data = "0x";
       
-      const tx = await contract.createTransaction(recipient, value, data);
+      let tx;
+      if (txType === 'direct') {
+        tx = await contract.directTransfer(recipient, value);
+      } else {
+        const data = "0x";
+        tx = await contract.createTransaction(recipient, value, data);
+      }
+      
       setTxHash(tx.hash);
       
       await tx.wait();
       setStep('success');
     } catch (err: any) {
       console.error(err);
-      setError(err?.shortMessage || err?.message || "Failed to create transaction.");
+      setError(err?.shortMessage || err?.message || "Failed to execute transaction.");
       setStep('form');
     }
   };
@@ -92,10 +99,36 @@ export function Send() {
       <Card className="border-navy-700 bg-navy-800/80 shadow-xl relative overflow-hidden">
         <CardHeader>
           <CardTitle>Transfer details</CardTitle>
-          <CardDescription>Create a new multisig transaction</CardDescription>
+          <CardDescription>Send funds from your SmartVault</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">Transaction Type</label>
+            <div className="flex gap-2 p-1 rounded-xl bg-navy-900/50 border border-navy-700">
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  txType === 'direct' 
+                    ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                onClick={() => setTxType('direct')}
+              >
+                Direct Send
+              </button>
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  txType === 'multisig' 
+                    ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                onClick={() => setTxType('multisig')}
+              >
+                Multisig Proposal
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-400">Asset</label>
             <div className="flex items-center justify-between rounded-xl border border-navy-700 bg-navy-900/50 p-4">
@@ -166,6 +199,10 @@ export function Send() {
             <span className="text-slate-400">Network</span>
             <span className="text-white">Sepolia Testnet</span>
           </div>
+          <div className="flex justify-between items-center pb-3 border-b border-navy-700">
+            <span className="text-slate-400">Type</span>
+            <span className="text-white">{txType === 'direct' ? 'Direct Transfer' : 'Multisig Proposal'}</span>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Est. Gas</span>
             <span className="text-white">~0.0002 ETH</span>
@@ -174,14 +211,16 @@ export function Send() {
         <div className="mt-6 flex items-start gap-3 rounded-lg bg-blue-500/10 p-4 text-left border border-blue-500/20">
           <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-400" />
           <p className="text-sm text-blue-200/80">
-            This will propose a transaction. Other owners must sign it before funds are transferred.
+            {txType === 'multisig' 
+              ? "This will propose a transaction. Other owners must sign it before funds are transferred."
+              : "This will execute the transfer immediately from the smart wallet."}
           </p>
         </div>
       </ConfirmDialog>
 
       {/* PENDING MODAL */}
-      <Modal isOpen={step === 'pending'} onClose={() => {}} title="Transaction Pending">
-        <LoadingSpinner text="Please wait while the transaction is being created on the blockchain..." size="lg" className="py-8" />
+      <Modal isOpen={step === 'pending'} onClose={() => {}} title={txType === 'multisig' ? 'Proposing Transaction' : 'Sending Transaction'}>
+        <LoadingSpinner text={txType === 'multisig' ? 'Creating proposal on the blockchain...' : 'Executing transfer on the blockchain...'} size="lg" className="py-8" />
       </Modal>
 
       {/* SUCCESS MODAL */}
@@ -200,8 +239,14 @@ export function Send() {
             <CheckCircle2 className="h-10 w-10 text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-white mb-2">Transaction Proposed</h3>
-            <p className="text-slate-400 mb-6">Your transaction has been created and is waiting for approvals.</p>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {txType === 'multisig' ? "Transaction Proposed" : "Transfer Successful"}
+            </h3>
+            <p className="text-slate-400 mb-6">
+              {txType === 'multisig' 
+                ? "Your transaction has been created and is waiting for approvals."
+                : "Your funds have been transferred successfully."}
+            </p>
             {txHash && (
               <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex w-full">
                 <Button variant="outline" className="w-full gap-2">

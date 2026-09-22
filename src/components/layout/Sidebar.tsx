@@ -7,8 +7,8 @@ export function Sidebar() {
   return (
     <aside className="hidden w-64 flex-col border-r border-navy-700 bg-navy-900 sm:flex">
       <div className="flex h-16 items-center gap-3 border-b border-navy-700 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-400">
-          <Shield className="h-5 w-5 text-navy-900" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg">
+          <img src="/logo.png" alt="SmartVault Logo" className="h-full w-full object-contain" />
         </div>
         <span className="text-xl font-bold tracking-tight text-white">SmartVault</span>
       </div>

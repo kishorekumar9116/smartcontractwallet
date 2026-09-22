@@ -17,9 +17,14 @@ export function TopBar() {
       <div className="flex items-center gap-4">
         {/* Mobile Spacer for Sidebar Toggle */}
         <div className="w-8 sm:hidden"></div>
-        <h1 className="text-xl font-bold tracking-tight text-white sm:hidden">
-          SmartVault
-        </h1>
+        <div className="flex items-center gap-2 sm:hidden">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg">
+            <img src="/logo.png" alt="SmartVault Logo" className="h-full w-full object-contain" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            SmartVault
+          </h1>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
